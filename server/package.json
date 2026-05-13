@@ -1,0 +1,17 @@
+{
+  "name": "tmux-proxy-server",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-pty": "^1.0.0",
+    "ws": "^8.17.1"
+  }
+}

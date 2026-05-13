@@ -1,0 +1,4 @@
+node_modules/
+.vite/
+client/dist/
+server/users.json

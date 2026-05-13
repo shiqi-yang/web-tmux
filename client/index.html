@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>tmux-proxy</title>
+  <link rel="stylesheet" href="/node_modules/@xterm/xterm/css/xterm.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex; height: 100vh; height: 100dvh;
+      background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 220px; min-width: 220px; background: #1e293b;
+      border-right: 1px solid #334155; display: flex; flex-direction: column;
+      transition: transform .2s ease;
+      z-index: 200;
+    }
+    #sidebar header {
+      padding: .75rem 1rem; font-size: .875rem; font-weight: 600;
+      color: #94a3b8; border-bottom: 1px solid #334155; letter-spacing: .05em;
+    }
+    #session-list { flex: 1; overflow-y: auto; padding: .5rem 0; }
+    .session-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .5rem .75rem; cursor: pointer; border-radius: 4px; margin: 0 .25rem;
+      min-height: 2.5rem;
+    }
+    .session-item:hover { background: #334155; }
+    .session-item.active { background: #1d4ed8; }
+    .session-name { font-size: .875rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .session-kill {
+      color: #64748b; font-size: .875rem; padding: .25rem .4rem;
+      border-radius: 3px; cursor: pointer; flex-shrink: 0; min-width: 1.75rem; text-align: center;
+    }
+    .session-kill:hover { color: #f87171; background: rgba(248,113,113,.1); }
+    #new-session { padding: .5rem; border-top: 1px solid #334155; display: flex; gap: .25rem; }
+    #new-session input {
+      flex: 1; padding: .4rem .5rem; border-radius: 4px; border: 1px solid #334155;
+      background: #0f172a; color: #e2e8f0; font-size: .875rem; outline: none;
+    }
+    #new-session input:focus { border-color: #3b82f6; }
+    #new-session button {
+      padding: .4rem .75rem; border-radius: 4px; border: none;
+      background: #3b82f6; color: #fff; font-size: 1rem; cursor: pointer; min-width: 2.25rem;
+    }
+    #new-session button:hover { background: #2563eb; }
+
+    /* ── Main area ── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    #toolbar {
+      padding: .4rem .75rem; background: #1e293b; border-bottom: 1px solid #334155;
+      display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: #64748b;
+      flex-shrink: 0;
+    }
+    #menu-btn {
+      display: none; background: none; border: none; color: #94a3b8;
+      font-size: 1.1rem; cursor: pointer; padding: .1rem .3rem; line-height: 1;
+    }
+    #session-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #logout { color: #64748b; cursor: pointer; font-size: .8rem; padding: .2rem .5rem; border-radius: 3px; flex-shrink: 0; }
+    #logout:hover { color: #f87171; }
+
+    #terminal-wrap { flex: 1; padding: .5rem; overflow: hidden; }
+    #terminal { width: 100%; height: 100%; }
+
+    #input-bar {
+      display: flex; align-items: center; gap: .375rem;
+      padding: .4rem .5rem;
+      padding-bottom: calc(.4rem + env(safe-area-inset-bottom));
+      background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0;
+    }
+    #cmd-input {
+      flex: 1; padding: .4rem .6rem; border-radius: 4px;
+      border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
+      font-family: monospace; font-size: .9rem; outline: none; min-width: 0;
+    }
+    #cmd-input:focus { border-color: #3b82f6; }
+    #append-enter-label {
+      display: flex; align-items: center; gap: .25rem;
+      color: #64748b; font-size: .75rem; white-space: nowrap; cursor: pointer; flex-shrink: 0;
+    }
+    #send-btn {
+      padding: .4rem .75rem; border-radius: 4px; border: none;
+      background: #3b82f6; color: #fff; font-size: .85rem; cursor: pointer; flex-shrink: 0;
+    }
+    #send-btn:hover { background: #2563eb; }
+    #send-btn:disabled { background: #334155; color: #64748b; cursor: default; }
+
+    /* ── Mobile overlay drawer ── */
+    #overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100;
+    }
+
+    @media (max-width: 640px) {
+      #menu-btn { display: block; }
+
+      #sidebar {
+        position: fixed; top: 0; left: 0; height: 100%; height: 100dvh;
+        transform: translateX(-100%);
+      }
+      #sidebar.open { transform: translateX(0); }
+      #overlay.open { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay"></div>
+
+  <div id="sidebar">
+    <header>SESSIONS</header>
+    <div id="session-list"></div>
+    <div id="new-session">
+      <input id="new-name" placeholder="新建 session…" maxlength="40" />
+      <button id="create-btn">+</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="toolbar">
+      <button id="menu-btn">☰</button>
+      <span id="session-label">未连接</span>
+      <span id="logout">退出登录</span>
+    </div>
+    <div id="terminal-wrap">
+      <div id="terminal"></div>
+    </div>
+    <div id="input-bar">
+      <input id="cmd-input" type="text" placeholder="输入命令…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <label id="append-enter-label">
+        <input id="append-enter" type="checkbox" checked />↵
+      </label>
+      <button id="send-btn" disabled>发送</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
