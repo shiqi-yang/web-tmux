@@ -32,14 +32,29 @@
     .session-item:hover { background: #334155; }
     .session-item.active { background: #1d4ed8; }
     .session-name { font-size: .875rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .session-rename {
+      color: #64748b; font-size: .8rem; padding: .25rem .3rem;
+      border-radius: 3px; cursor: pointer; flex-shrink: 0; min-width: 1.5rem; text-align: center;
+    }
+    .session-rename:hover { color: #60a5fa; background: rgba(96,165,250,.1); }
+    .session-rename-input {
+      flex: 1; background: #0f172a; border: 1px solid #3b82f6; border-radius: 3px;
+      color: #e2e8f0; font-size: .875rem; padding: .1rem .3rem; outline: none; min-width: 0;
+    }
     .session-kill {
       color: #64748b; font-size: .875rem; padding: .25rem .4rem;
       border-radius: 3px; cursor: pointer; flex-shrink: 0; min-width: 1.75rem; text-align: center;
     }
     .session-kill:hover { color: #f87171; background: rgba(248,113,113,.1); }
-    #new-session { padding: .5rem; border-top: 1px solid #334155; display: flex; gap: .25rem; }
+    .session-pin {
+      color: #64748b; font-size: .8rem; padding: .25rem .3rem;
+      border-radius: 3px; cursor: pointer; flex-shrink: 0; min-width: 1.5rem; text-align: center;
+    }
+    .session-pin:hover { color: #fbbf24; background: rgba(251,191,36,.1); }
+    .session-pin.pinned { color: #fbbf24; }
+    #new-session { padding: .5rem .25rem; border-top: 1px solid #334155; display: flex; gap: .25rem; }
     #new-session input {
-      flex: 1; padding: .4rem .5rem; border-radius: 4px; border: 1px solid #334155;
+      flex: 1; min-width: 0; padding: .4rem .5rem; border-radius: 4px; border: 1px solid #334155;
       background: #0f172a; color: #e2e8f0; font-size: .875rem; outline: none;
     }
     #new-session input:focus { border-color: #3b82f6; }
@@ -63,6 +78,12 @@
     #session-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #logout { color: #64748b; cursor: pointer; font-size: .8rem; padding: .2rem .5rem; border-radius: 3px; flex-shrink: 0; }
     #logout:hover { color: #f87171; }
+    .font-btn {
+      background: none; border: 1px solid #334155; color: #94a3b8;
+      border-radius: 3px; cursor: pointer; padding: .1rem .4rem; font-size: .8rem; flex-shrink: 0; line-height: 1.4;
+    }
+    .font-btn:hover { border-color: #64748b; color: #e2e8f0; }
+    #font-size-label { color: #475569; font-size: .75rem; flex-shrink: 0; min-width: 2em; text-align: center; }
 
     #terminal-wrap { flex: 1; padding: .5rem; overflow: hidden; }
     #terminal { width: 100%; height: 100%; }
@@ -89,6 +110,56 @@
     }
     #send-btn:hover { background: #2563eb; }
     #send-btn:disabled { background: #334155; color: #64748b; cursor: default; }
+
+    #key-bar {
+      display: none;
+      flex-wrap: nowrap; overflow-x: auto;
+      padding: .3rem .5rem;
+      padding-bottom: calc(.3rem + env(safe-area-inset-bottom));
+      background: #1e293b; border-top: 1px solid #334155;
+      gap: .3rem; flex-shrink: 0;
+    }
+    #key-bar.multiline { flex-wrap: wrap; overflow-x: hidden; }
+    #key-bar button {
+      display: inline-block; padding: .35rem .6rem; border-radius: 4px; border: none;
+      background: #334155; color: #e2e8f0; font-size: .8rem; cursor: pointer;
+      flex-shrink: 0; white-space: nowrap;
+    }
+    #key-bar button:active { background: #475569; }
+    #key-bar .custom-btn { background: #1d3a5f; position: relative; }
+    #key-bar .custom-btn.deleting { background: #7f1d1d; }
+    #add-shortcut-btn { background: #0f3460; color: #60a5fa; }
+    #wrap-toggle-btn { background: #1e3a5f; color: #60a5fa; }
+
+    /* Modal */
+    .modal-overlay {
+      display: flex; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      z-index: 500; align-items: center; justify-content: center;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 1.25rem; width: min(320px, calc(100% - 2rem)); display: flex; flex-direction: column; gap: .75rem;
+    }
+    .modal-card h3 { color: #e2e8f0; font-size: 1rem; margin: 0; }
+    .modal-card label { color: #94a3b8; font-size: .8rem; }
+    .modal-card input[type="text"] {
+      width: 100%; padding: .4rem .6rem; border-radius: 4px; border: 1px solid #334155;
+      background: #0f172a; color: #e2e8f0; font-size: .9rem; outline: none;
+    }
+    .modal-card input[type="text"]:focus { border-color: #3b82f6; }
+    .modal-enter-label { display: flex; align-items: center; gap: .4rem; color: #94a3b8; font-size: .8rem; cursor: pointer; }
+    .modal-actions { display: flex; gap: .5rem; justify-content: flex-end; }
+    .modal-actions button {
+      padding: .4rem .9rem; border-radius: 4px; border: none; font-size: .875rem; cursor: pointer;
+    }
+    #sc-cancel { background: #334155; color: #e2e8f0; }
+    #sc-save { background: #3b82f6; color: #fff; }
+
+    @media (max-width: 640px) {
+      #key-bar { display: flex; }
+      #terminal-wrap { padding-bottom: .5rem; }
+    }
 
     /* ── Mobile overlay drawer ── */
     #overlay {
@@ -123,10 +194,52 @@
     <div id="toolbar">
       <button id="menu-btn">☰</button>
       <span id="session-label">未连接</span>
+      <button class="font-btn" id="font-dec">A-</button>
+      <span id="font-size-label"></span>
+      <button class="font-btn" id="font-inc">A+</button>
       <span id="logout">退出登录</span>
     </div>
     <div id="terminal-wrap">
       <div id="terminal"></div>
+    </div>
+    <div id="key-bar">
+      <button id="wrap-toggle-btn">≡</button>
+      <span style="display:inline-block;width:1px;background:#334155;margin:0 .2rem;align-self:stretch;flex-shrink:0"></span>
+      <button data-seq="\x1b[5~">PgUp</button>
+      <button data-seq="\x1b[6~">PgDn</button>
+      <button data-seq="\x1b[A">↑</button>
+      <button data-seq="\x1b[B">↓</button>
+      <button data-seq="\x1b[D">←</button>
+      <button data-seq="\x1b[C">→</button>
+      <button data-seq="\t">Tab</button>
+      <button data-seq="\x1b">Esc</button>
+      <button data-seq="\x03">Ctrl+C</button>
+      <button data-seq="\x04">Ctrl+D</button>
+      <button data-seq="\x1a">Ctrl+Z</button>
+      <button data-seq="\x0c">Ctrl+L</button>
+      <button data-seq="\x01">Ctrl+A</button>
+      <button data-seq="\x05">Ctrl+E</button>
+      <button data-seq="\x15">Ctrl+U</button>
+      <button data-seq="\x02">Ctrl+B</button>
+      <span style="display:inline-block;width:1px;background:#334155;margin:0 .2rem;align-self:stretch;flex-shrink:0"></span>
+      <button id="add-shortcut-btn">＋</button>
+    </div>
+
+    <div id="shortcut-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h3>添加自定义快捷键</h3>
+        <label>显示名称</label>
+        <input id="sc-label" type="text" placeholder="如: ll" maxlength="12" autocomplete="off" />
+        <label>发送内容</label>
+        <input id="sc-cmd" type="text" placeholder="如: ls -la" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <label class="modal-enter-label">
+          <input id="sc-enter" type="checkbox" checked /> 附加回车
+        </label>
+        <div class="modal-actions">
+          <button id="sc-cancel">取消</button>
+          <button id="sc-save">保存</button>
+        </div>
+      </div>
     </div>
     <div id="input-bar">
       <input id="cmd-input" type="text" placeholder="输入命令…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />

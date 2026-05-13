@@ -5,10 +5,14 @@ const WebSocket = require('ws');
 
 const { requireAuth, upgradeAuth, signToken } = require('./auth');
 const { loadUsers, createUser, deleteUser, verifyPassword, initAdminIfNeeded } = require('./users');
-const { listSessions, createSession, killSession, attachPty, resizePty, onSessionChange } = require('./ptyManager');
+const { listSessions, createSession, renameSession, killSession, attachPty, resizePty, onSessionChange } = require('./ptyManager');
 
 const app = express();
 app.use(express.json());
+
+const SESSION_NAME_RE = /^[a-zA-Z0-9_.-]{1,40}$/;
+function validSessionName(name) { return typeof name === 'string' && SESSION_NAME_RE.test(name); }
+function validDimension(v) { return Number.isInteger(v) && v >= 1 && v <= 9999; }
 
 // --- Static files (production) ---
 if (process.env.NODE_ENV === 'production') {
@@ -31,12 +35,26 @@ app.get('/api/sessions', requireAuth, (req, res) => {
 
 app.post('/api/sessions', requireAuth, (req, res) => {
   const { name } = req.body || {};
-  if (!name) return res.status(400).json({ error: 'name required' });
+  if (!validSessionName(name)) return res.status(400).json({ error: 'invalid session name (1-40 chars, a-z A-Z 0-9 _ . -)' });
   try {
     createSession(name);
     res.status(201).json({ name });
   } catch (e) {
     res.status(409).json({ error: e.message });
+  }
+});
+
+app.patch('/api/sessions/:name', requireAuth, (req, res) => {
+  const oldName = req.params.name;
+  const { name: newName } = req.body || {};
+  if (!validSessionName(oldName) || !validSessionName(newName)) {
+    return res.status(400).json({ error: 'invalid session name' });
+  }
+  try {
+    renameSession(oldName, newName);
+    res.json({ name: newName });
+  } catch (e) {
+    res.status(404).json({ error: e.message });
   }
 });
 
@@ -97,13 +115,14 @@ server.on('upgrade', (req, socket, head) => {
     socket.destroy();
     return;
   }
-  const user = upgradeAuth(req);
-  if (!user) {
-    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-    socket.destroy();
-    return;
-  }
-  wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req, user));
+  wss.handleUpgrade(req, socket, head, ws => {
+    const user = upgradeAuth(req);
+    if (!user) {
+      ws.close(4001, 'Unauthorized');
+      return;
+    }
+    wss.emit('connection', ws, req, user);
+  });
 });
 
 wss.on('connection', (ws) => {
@@ -132,18 +151,24 @@ wss.on('connection', (ws) => {
     try { msg = JSON.parse(data); } catch { return; }
 
     if (msg.type === 'attach') {
+      if (!validSessionName(msg.sessionName)) return;
       // Detach previous pty if any
       if (currentPty) { try { currentPty.kill(); } catch {} }
 
       currentSession = msg.sessionName;
+      const attachedSession = msg.sessionName;
       currentPty = attachPty(
         msg.sessionName,
         chunk => {
           if (ws.readyState === WebSocket.OPEN) ws.send(Buffer.from(chunk), { binary: true });
         },
         () => {
+          if (currentSession !== attachedSession) return;
           currentPty = null;
           currentSession = null;
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'detached' }));
+          }
         },
         msg.cols,
         msg.rows
@@ -157,7 +182,11 @@ wss.on('connection', (ws) => {
     }
 
     if (msg.type === 'resize' && currentPty && currentSession) {
-      resizePty(currentPty, currentSession, msg.cols, msg.rows);
+      const cols = Math.trunc(Number(msg.cols));
+      const rows = Math.trunc(Number(msg.rows));
+      if (validDimension(cols) && validDimension(rows)) {
+        resizePty(currentPty, currentSession, cols, rows);
+      }
     }
   });
 

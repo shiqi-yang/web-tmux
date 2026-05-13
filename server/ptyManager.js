@@ -1,5 +1,5 @@
 const pty = require('node-pty');
-const { execSync, exec } = require('child_process');
+const { execFileSync, execFile } = require('child_process');
 
 // sessionName -> Set<pty instance>
 const sessionPtys = new Map();
@@ -18,7 +18,7 @@ function broadcastChange() {
 
 function listSessions() {
   try {
-    const out = execSync('tmux list-sessions -F "#{session_name}\t#{session_windows}\t#{session_created_string}"', {
+    const out = execFileSync('tmux', ['list-sessions', '-F', '#{session_name}\t#{session_windows}\t#{session_created_string}'], {
       encoding: 'utf8',
     }).trim();
     if (!out) return [];
@@ -33,7 +33,7 @@ function listSessions() {
 
 function hasSession(name) {
   try {
-    execSync(`tmux has-session -t ${JSON.stringify(name)}`, { stdio: 'ignore' });
+    execFileSync('tmux', ['has-session', '-t', name], { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -42,7 +42,13 @@ function hasSession(name) {
 
 function createSession(name) {
   if (hasSession(name)) throw new Error('Session already exists');
-  execSync(`tmux new-session -d -s ${JSON.stringify(name)}`);
+  execFileSync('tmux', ['new-session', '-d', '-s', name]);
+  broadcastChange();
+}
+
+function renameSession(oldName, newName) {
+  if (!hasSession(oldName)) throw new Error('Session not found');
+  execFileSync('tmux', ['rename-session', '-t', oldName, newName]);
   broadcastChange();
 }
 
@@ -53,7 +59,7 @@ function killSession(name) {
     ptys.forEach(p => { try { p.kill(); } catch {} });
     sessionPtys.delete(name);
   }
-  execSync(`tmux kill-session -t ${JSON.stringify(name)}`);
+  execFileSync('tmux', ['kill-session', '-t', name]);
   broadcastChange();
 }
 
@@ -82,7 +88,7 @@ function attachPty(sessionName, onData, onExit, cols = 220, rows = 50) {
 
 function resizePty(p, sessionName, cols, rows) {
   try { p.resize(cols, rows); } catch {}
-  exec(`tmux resize-window -t ${JSON.stringify(sessionName)} -x ${cols} -y ${rows}`);
+  execFile('tmux', ['resize-window', '-t', sessionName, '-x', String(cols), '-y', String(rows)]);
 }
 
-module.exports = { listSessions, createSession, killSession, attachPty, resizePty, onSessionChange };
+module.exports = { listSessions, createSession, renameSession, killSession, attachPty, resizePty, onSessionChange };
