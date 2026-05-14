@@ -27,13 +27,28 @@ focusInput();
 
 // Clicking outside input/key bar returns focus to input
 document.addEventListener('click', e => {
-  if (!e.target.closest('#input-bar, #key-bar')) focusInput();
+  if (!e.target.closest('#input-bar, #key-bar, #sidebar, .modal-overlay')) focusInput();
 });
 
 // --- Mobile: virtual keyboard via xterm's internal textarea ---
 document.getElementById('terminal').addEventListener('touchend', () => {
   term.textarea?.focus();
 }, { passive: true });
+
+// --- Desktop: sidebar collapse toggle ---
+const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+function applySidebarCollapsed(collapsed) {
+  document.getElementById('sidebar').classList.toggle('collapsed', collapsed);
+  sidebarToggleBtn.textContent = collapsed ? '›' : '‹';
+}
+applySidebarCollapsed(localStorage.getItem('sidebarCollapsed') === '1');
+sidebarToggleBtn.addEventListener('click', () => {
+  const next = !document.getElementById('sidebar').classList.contains('collapsed');
+  localStorage.setItem('sidebarCollapsed', next ? '1' : '0');
+  applySidebarCollapsed(next);
+  fitAddon.fit();
+  sendResize();
+});
 
 // --- Mobile: sidebar drawer toggle ---
 const sidebar = document.getElementById('sidebar');
