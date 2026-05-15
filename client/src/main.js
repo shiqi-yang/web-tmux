@@ -20,7 +20,12 @@ fitAddon.fit();
 
 new ResizeObserver(() => { fitAddon.fit(); sendResize(); }).observe(document.getElementById('terminal-wrap'));
 
-function focusInput() { document.getElementById('cmd-input').focus(); }
+// Declared early so focusInput() can reference it before the toggle block below
+let passthroughEnabled = localStorage.getItem('passthrough') !== '0';
+
+function focusInput() {
+  if (passthroughEnabled) { term.focus(); } else { document.getElementById('cmd-input').focus(); }
+}
 
 // Default focus on load
 focusInput();
@@ -57,6 +62,26 @@ function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('o
 function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
 document.getElementById('menu-btn').addEventListener('click', openSidebar);
 overlay.addEventListener('click', closeSidebar);
+
+// --- Passthrough toggle ---
+const passthroughBtn = document.getElementById('passthrough-btn');
+function updateInputBar() {
+  document.getElementById('input-bar').style.display = passthroughEnabled ? 'none' : '';
+  if (!passthroughEnabled) {
+    document.getElementById('send-btn').disabled = !currentSession;
+  }
+  focusInput();
+}
+
+function applyPassthrough(enabled) {
+  passthroughEnabled = enabled;
+  localStorage.setItem('passthrough', enabled ? '1' : '0');
+  passthroughBtn.classList.toggle('active', enabled);
+  passthroughBtn.title = enabled ? '键盘透传：开（点击关闭）' : '键盘透传：关（点击开启）';
+  updateInputBar();
+}
+applyPassthrough(passthroughEnabled);
+passthroughBtn.addEventListener('click', () => applyPassthrough(!passthroughEnabled));
 
 // --- State ---
 let ws = null;
@@ -99,14 +124,14 @@ function connectWS() {
       pendingAttach = null;
       currentSession = msg.sessionName;
       document.getElementById('session-label').textContent = msg.sessionName;
-      document.getElementById('send-btn').disabled = false;
+      updateInputBar();
       sendResize();
     }
     if (msg.type === 'detached') {
       currentSession = null;
       pendingAttach = null;
-      document.getElementById('send-btn').disabled = true;
       document.getElementById('session-label').textContent = '未连接';
+      updateInputBar();
     }
     if (msg.type === 'error') {
       pendingAttach = null;
@@ -130,7 +155,7 @@ connectWS();
 
 // --- Terminal input ---
 term.onData(data => {
-  if (ws?.readyState === WebSocket.OPEN) {
+  if (passthroughEnabled && ws?.readyState === WebSocket.OPEN) {
     ws.send(new TextEncoder().encode(data));
   }
 });
@@ -410,7 +435,7 @@ cmdInput.addEventListener('keydown', e => {
   if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && cmdInput.value !== '') return;
 
   const seq = keyToSequence(e);
-  if (seq !== null) {
+  if (seq !== null && passthroughEnabled) {
     e.preventDefault();
     if (ws?.readyState === WebSocket.OPEN && currentSession) {
       ws.send(new TextEncoder().encode(seq));

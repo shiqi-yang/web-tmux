@@ -3,7 +3,8 @@ set -e
 
 BACKEND_PORT=${BACKEND_PORT:-18080}
 FRONTEND_PORT=${FRONTEND_PORT:-18081}
-ADMIN_USER=${ADMIN_USER:-admin}
+ADMIN_USER=${ADMIN_USER:-yang}
+ADMIN_PASSWORD=${ADMIN_PASSWORD:-yang1991}
 
 if [ -z "$ADMIN_PASSWORD" ] && [ ! -f "$(dirname "$0")/server/users.json" ]; then
   echo "Error: ADMIN_PASSWORD must be set on first run (users.json does not exist)" >&2
@@ -22,6 +23,7 @@ FRONTEND_PID=$!
 
 echo "Starting SSH tunnel to stock ..."
 setsid autossh -M 0 -N \
+    -i ~/.ssh/id_rsa.aca \
     -o ExitOnForwardFailure=yes \
     -o ServerAliveInterval=30 \
     -o ServerAliveCountMax=3 \
