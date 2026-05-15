@@ -63,6 +63,12 @@ function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.re
 document.getElementById('menu-btn').addEventListener('click', openSidebar);
 overlay.addEventListener('click', closeSidebar);
 
+// --- State ---
+let ws = null;
+let currentSession = null;
+let reconnectDelay = 1000;
+let pendingAttach = null;
+
 // --- Passthrough toggle ---
 const passthroughBtn = document.getElementById('passthrough-btn');
 function updateInputBar() {
@@ -82,12 +88,6 @@ function applyPassthrough(enabled) {
 }
 applyPassthrough(passthroughEnabled);
 passthroughBtn.addEventListener('click', () => applyPassthrough(!passthroughEnabled));
-
-// --- State ---
-let ws = null;
-let currentSession = null;
-let reconnectDelay = 1000;
-let pendingAttach = null; // guard against concurrent attach
 
 // --- WebSocket ---
 function connectWS() {
